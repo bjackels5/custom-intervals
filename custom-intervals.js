@@ -25,8 +25,6 @@ editIntervalClicked = (event) => {
       // show the interval editor (i.e. tne new interval form with the fields filled out)
       newIntervalFormEl.dataset.intervalid = interval.id
       console.log ("editIntervalClicked intervalid:", newIntervalFormEl.dataset.intervalid);
-      alert("editIntervalClicked intervalid:" + JSON.stringify(newIntervalFormEl.dataset.intervalid));
-
 
       document.querySelector('#newIntervalCollapse').classList.add("show");
     } else {
@@ -76,90 +74,89 @@ loadIntervals = () => {
 }
 
 reloadIntervalsEls = () => {
-    // if (newIntervalRowEl != undefined && newIntervalRowEl != null) {
-    //     newIntervalRowEl.remove();
+  while (intervalsListEl.firstChild) {
+      intervalsListEl.removeChild(intervalsListEl.firstChild);
+  }
 
-        while (intervalsListEl.firstChild) {
-            intervalsListEl.removeChild(intervalsListEl.firstChild);
-        }
-
-        intervals.forEach( (interval) => { addIntervalEl(interval); });
-
-        // intervalsListEl.appendChild(newIntervalRowEl);
-    // }
+  intervals.forEach( (interval) => { addIntervalEl(interval); });
 }
-
-// var newIntervalClicked = (event) => {
-//     console.log("newIntervalClicked event:", event);
-//     console.log("event.target.id:", event.target.id);
-//     document.getElementById("intervalsCollapse").classList.remove('show');
-//     newIntervalFormWrapperEl.classList.remove("invisible");
-// }
 
 retrieveIntervals = () => {
     intervals = JSON.parse(localStorage.getItem("CustomIntervalsIntervals") || "[]");
-    if (intervals.length > 0) {
-        if (intervals[0].id === undefined || intervals[0].id === null) {
-            for (let i = 0; i < intervals.length; i++) {
-                intervals[i].id = i;
-            }
-        }
-    }
 }
 
 saveIntervals = () => {
     intervals.sort((a, b) => a.iName.localeCompare(b.iName));
-    console.log("saveIntervals!!!");
     localStorage.setItem("CustomIntervalsIntervals", JSON.stringify(intervals));
 }
 
-newIntervalRestore = () => {
-    const nameEl = document.getElementById("new-interval-name");
-    const secondsEl = document.getElementById("new-interval-seconds");
-    const repeatEl = document.getElementById("new-interval-repeats");
-    nameEl.value = '';
-    secondsEl.value = secondsEl.placeholder;
-    repeatEl.value = repeatEl.placeholder;
+restoreInterval = (interval) => {
+  const nameEl = document.getElementById("new-interval-name");
+  const secondsEl = document.getElementById("new-interval-seconds");
+  const repeatEl = document.getElementById("new-interval-repeats");
+  nameEl.value = interval.iName;
+  secondsEl.value = interval.seconds.length > 0 ? interval.seconds : secondsEl.placeholder;
+  repeatEl.value = interval.repeat.length > 0 ? interval.repeat : repeatEl.placeholder;
+  newIntervalFormEl.dataset.intervalid = interval.id;
 }
 
-function newIntervalSubmitClicked(event) {
-    alert("newIntervalSubmitClicked");
+newIntervalRestoreExisting = (intervalID) => {
+  const interval = intervals.find(({ id }) => id === parseInt(intervalID));
+  restoreInterval(interval);
+}
 
+
+newIntervalRestoreToNew = () => {
+  restoreInterval({id: 'new', iName: '', seconds: '', repeat: ''})
+}
+
+function getUniqueIntervalID() {
+  if (intervals.length > 0) {
+    const theIDs = intervals.map(x => x.id);
+    const maxID = Math.max(...theIDs);
+    return maxID + 1;
+  } else {
+    return 1;
+  }
+}
+
+function newIntervalSave() {
     const nameEl = document.getElementById("new-interval-name");
     const iName = nameEl.value;
-
-    if (iName.length > 0) {
-        nameExists = intervals.some((interval) => iName === interval.iName); 
-        if (!nameExists) {
-            console.log("newIntervalSubmitClicked: form is valid");
-
-            const secondsEl = document.getElementById("new-interval-seconds");
-            const seconds = secondsEl.value;
-            const repeatEl = document.getElementById("new-interval-repeats");
-            const repeat = repeatEl.value;
-            const interval = { id: intervals.length, iName, seconds, repeat };
-            
-            intervals.push(interval);
-            saveIntervals();
-
-            reloadIntervalsEls();
-
-            newIntervalRestore();
-
-            // playSound();
-        }
-        else {
-            console.log("name exists!");
-            nameEl.classList.add("is-invalid");
-        }
+    const secondsEl = document.getElementById("new-interval-seconds");
+    const seconds = secondsEl.value;
+    const repeatEl = document.getElementById("new-interval-repeats");
+    const repeat = repeatEl.value;
+    const iDataID = newIntervalFormEl.dataset.intervalid;
+    let iID;
+    if (iDataID === undefined || iDataID === null || iDataID === "new") {
+      iID = getUniqueIntervalID();
     } else {
-        console.log("name is required");
-        nameEl.classList.add("is-invalid");
+      iID = parseInt(iDataID);
+      // remove the old interval from the array
+      const intervalIndex = intervals.findIndex(({ id }) => id === iID);
+      intervals.splice(intervalIndex, 1);
     }
+    
+    const interval = { id: iID, iName, seconds, repeat };
+    
+    intervals.push(interval);
+    saveIntervals();
+
+    reloadIntervalsEls();
+
+    newIntervalRestoreToNew();
+
+    // playSound();
 }
 
 newIntervalRestoreClicked = (event) => {
-    newIntervalRestore();
+  const iDataID = newIntervalFormEl.dataset.intervalid;
+  if (iDataID === undefined || iDataID === null || iDataID === "new") {
+    newIntervalRestoreToNew();
+  } else {
+    newIntervalRestoreExisting(iDataID);
+  }
 }
 
 playSound = () => {
@@ -185,21 +182,17 @@ formSubmitted = (event) => {
 
     if (!newIntervalFormEl.checkValidity()) {
         console.log("form NOT VALID");
+        newIntervalFormEl.classList.add('was-validated')
         event.preventDefault()
         event.stopPropagation()
     } else {
-        // alert("form valid");
+        newIntervalSave();
 
-        alert("formSubmitted intervalid:" + JSON.stringify(newIntervalFormEl.dataset.intervalid));
-
-        // How can I get the new/edit interval accordion to stay open. adding "show" to the class
-        // list does not seem to work, nor does buttonZ clicking
-        document.querySelector('#newIntervalCollapse').classList.add("show");
-        // document.querySelector('#newIntervalCollapse').collapse('show');
-        // document.querySelector('#buttonZ').click();
+        // Make the accordion stay open and be ready to create a new interval
+        newIntervalFormEl.classList.remove('was-validated')
+        event.preventDefault()
+        event.stopPropagation()
   }
-
-    newIntervalFormEl.classList.add('was-validated')
   }
 
 // document.querySelector('#noisebutton').addEventListener('click', playSound);
