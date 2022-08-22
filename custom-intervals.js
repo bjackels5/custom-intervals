@@ -6,25 +6,31 @@ const newIntervalSubmitEl = document.getElementById("new-interval-submit-button"
 const newIntervalRestoreEl = document.getElementById("new-interval-restore-button");
 const intervalsListEl = document.getElementById("intervals-list");
 
+deleteIntervalClicked = (event) => {
+  const intervalID = event.currentTarget.dataset.intervalid;
+  const intervalIndex = intervals.findIndex(({ id }) => id === parseInt(intervalID));
+  if (intervalIndex >= 0) {
+    intervals.splice(intervalIndex, 1);
+    saveIntervals();
+    reloadIntervalsEls();
+  } else {
+    console.log("interval with id ", intervalID, " not found");
+  }
+}
+
 editIntervalClicked = (event) => {
-    const buttonID = event.target.id;
-    console.log("editIntervalClicked buttonID:", buttonID);
-    const intervalID = parseInt(getIntervalIDFromButtonID(buttonID));
-    console.log("editIntervalClicked intervalID:", intervalID);
-    console.log("edit the interval:", intervalID);
-    const interval = intervals.find(({ id }) => id === intervalID);
+    const intervalID = event.currentTarget.dataset.intervalid;
+    const interval = intervals.find(({ id }) => id === parseInt(intervalID));
     if (interval) {
       const nameEl = document.getElementById("new-interval-name");
       const secondsEl = document.getElementById("new-interval-seconds");
       const repeatEl = document.getElementById("new-interval-repeats");
-      console.log("interval:", interval);
       nameEl.value = interval.iName;
       secondsEl.value = interval.seconds;
       repeatEl.value = interval.repeat;
       const iID = interval.id;
-      // show the interval editor (i.e. tne new interval form with the fields filled out)
+      // show the interval editor (i.e. tne new interval form with the fields filled in)
       newIntervalFormEl.dataset.intervalid = interval.id
-      console.log ("editIntervalClicked intervalid:", newIntervalFormEl.dataset.intervalid);
 
       document.querySelector('#newIntervalCollapse').classList.add("show");
     } else {
@@ -33,20 +39,30 @@ editIntervalClicked = (event) => {
 }
 
 addIntervalButton = (interval) => {
-    let intervalButtonEl = document.createElement("button");
-    intervalButtonEl.classList.add("col", "btn", "btn-primary", "btn-sm");
+    const intervalButtonEl = document.createElement("button");
+    intervalButtonEl.classList.add("col-7", "btn", "btn-primary", "btn-sm");
     intervalButtonEl.textContent = interval.iName;
     intervalButtonEl.type = "button";
-    intervalButtonEl.id = "interval-button-" + interval.id;
+    intervalButtonEl.dataset.intervalid = interval.id;
     intervalButtonEl.addEventListener("click", editIntervalClicked);
-    return intervalButtonEl;
-};
+    const editIcon = document.createElement("i");
+    editIcon.classList.add("fa-solid", "fa-pencil", "mt-1");
+    intervalButtonEl.appendChild(editIcon);
 
-getIntervalIDFromButtonID = (buttonID) => {
-    // strip out 'interval-button-"
-    let len = "interval-button-".length;
-    console.log("interval ID:", buttonID.slice(len));
-    return buttonID.slice(len)
+    return intervalButtonEl;
+}
+
+addIntervalDeleteButton = (interval) => {
+  const intervalDeleteButtonEl = document.createElement("button");
+  intervalDeleteButtonEl.classList.add("col-1", "btn", "btn-danger", "btn-sm");
+  intervalDeleteButtonEl.type = "button";
+  intervalDeleteButtonEl.dataset.intervalid = interval.id;
+  intervalDeleteButtonEl.addEventListener("click", deleteIntervalClicked);
+  const deleteIcon = document.createElement("i");
+  deleteIcon.classList.add("fa-solid", "fa-trash-can", "mt-1");
+  intervalDeleteButtonEl.appendChild(deleteIcon);
+
+  return intervalDeleteButtonEl;
 }
 
 addIntervalEl = (interval) => {
@@ -55,21 +71,21 @@ addIntervalEl = (interval) => {
     intervalEl.classList.add("row", "mb-3", "existing-interval");
     const intervalNameEl = addIntervalButton(interval);
     const intervalSecondsEl = document.createElement("div");
-    intervalSecondsEl.classList.add("col");
+    intervalSecondsEl.classList.add("col-2");
     intervalSecondsEl.textContent = interval.seconds;
     const intervalRepeatEl = document.createElement("div");
-    intervalRepeatEl.classList.add("col");
+    intervalRepeatEl.classList.add("col-2");
     intervalRepeatEl.textContent = interval.repeat;
+    const intervalDeleteEl = addIntervalDeleteButton(interval);
     intervalEl.appendChild(intervalNameEl);
     intervalEl.appendChild(intervalSecondsEl);
     intervalEl.appendChild(intervalRepeatEl);
+    intervalEl.appendChild(intervalDeleteEl);
     intervalsListEl.appendChild(intervalEl);
 }
 
 loadIntervals = () => {
     retrieveIntervals();
-    console.log("localStorage intervals length:", intervals.length, ", intervals:", intervals);
-
     intervals.forEach( (interval) => { addIntervalEl(interval); });
 }
 
@@ -198,7 +214,7 @@ formSubmitted = (event) => {
 // document.querySelector('#noisebutton').addEventListener('click', playSound);
 
 newIntervalRestoreEl.addEventListener("click", newIntervalRestoreClicked);
-newIntervalFormEl.addEventListener("submit", formSubmitted)
+newIntervalFormEl.addEventListener("submit", formSubmitted);
 
 loadIntervals();
 
